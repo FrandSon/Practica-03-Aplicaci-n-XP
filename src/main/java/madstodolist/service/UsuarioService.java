@@ -10,66 +10,86 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class UsuarioService {
 
-    Logger logger = LoggerFactory.getLogger(UsuarioService.class);
+  Logger logger = LoggerFactory.getLogger(UsuarioService.class);
 
-    public enum LoginStatus {LOGIN_OK, USER_NOT_FOUND, ERROR_PASSWORD}
+  public enum LoginStatus {
+    LOGIN_OK, USER_NOT_FOUND, ERROR_PASSWORD
+  }
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
-    @Autowired
-    private ModelMapper modelMapper;
+  @Autowired
+  private UsuarioRepository usuarioRepository;
+  @Autowired
+  private ModelMapper modelMapper;
 
-    @Transactional(readOnly = true)
-    public LoginStatus login(String eMail, String password) {
-        Optional<Usuario> usuario = usuarioRepository.findByEmail(eMail);
-        if (!usuario.isPresent()) {
-            return LoginStatus.USER_NOT_FOUND;
-        } else if (!usuario.get().getPassword().equals(password)) {
-            return LoginStatus.ERROR_PASSWORD;
-        } else {
-            return LoginStatus.LOGIN_OK;
-        }
+  @Transactional(readOnly = true)
+  public LoginStatus login(String eMail, String password) {
+    Optional<Usuario> usuario = usuarioRepository.findByEmail(eMail);
+    if (!usuario.isPresent()) {
+      return LoginStatus.USER_NOT_FOUND;
+    } else if (!usuario.get().getPassword().equals(password)) {
+      return LoginStatus.ERROR_PASSWORD;
+    } else {
+      return LoginStatus.LOGIN_OK;
     }
+  }
 
-    // Se añade un usuario en la aplicación.
-    // El email y password del usuario deben ser distinto de null
-    // El email no debe estar registrado en la base de datos
-    @Transactional
-    public UsuarioData registrar(UsuarioData usuario) {
-        Optional<Usuario> usuarioBD = usuarioRepository.findByEmail(usuario.getEmail());
-        if (usuarioBD.isPresent())
-            throw new UsuarioServiceException("El usuario " + usuario.getEmail() + " ya está registrado");
-        else if (usuario.getEmail() == null)
-            throw new UsuarioServiceException("El usuario no tiene email");
-        else if (usuario.getPassword() == null)
-            throw new UsuarioServiceException("El usuario no tiene password");
-        else {
-            Usuario usuarioNuevo = modelMapper.map(usuario, Usuario.class);
-            usuarioNuevo = usuarioRepository.save(usuarioNuevo);
-            return modelMapper.map(usuarioNuevo, UsuarioData.class);
-        }
+  // Se añade un usuario en la aplicación.
+  // El email y password del usuario deben ser distinto de null
+  // El email no debe estar registrado en la base de datos
+  @Transactional
+  public UsuarioData registrar(UsuarioData usuario) {
+    Optional<Usuario> usuarioBD = usuarioRepository.findByEmail(usuario.getEmail());
+    if (usuarioBD.isPresent())
+      throw new UsuarioServiceException("El usuario " + usuario.getEmail() + " ya está registrado");
+    else if (usuario.getEmail() == null)
+      throw new UsuarioServiceException("El usuario no tiene email");
+    else if (usuario.getPassword() == null)
+      throw new UsuarioServiceException("El usuario no tiene password");
+    else {
+      Usuario usuarioNuevo = modelMapper.map(usuario, Usuario.class);
+      usuarioNuevo = usuarioRepository.save(usuarioNuevo);
+      return modelMapper.map(usuarioNuevo, UsuarioData.class);
     }
+  }
 
-    @Transactional(readOnly = true)
-    public UsuarioData findByEmail(String email) {
-        Usuario usuario = usuarioRepository.findByEmail(email).orElse(null);
-        if (usuario == null) return null;
-        else {
-            return modelMapper.map(usuario, UsuarioData.class);
-        }
+  @Transactional(readOnly = true)
+  public UsuarioData findByEmail(String email) {
+    Usuario usuario = usuarioRepository.findByEmail(email).orElse(null);
+    if (usuario == null)
+      return null;
+    else {
+      return modelMapper.map(usuario, UsuarioData.class);
     }
+  }
 
-    @Transactional(readOnly = true)
-    public UsuarioData findById(Long usuarioId) {
-        Usuario usuario = usuarioRepository.findById(usuarioId).orElse(null);
-        if (usuario == null) return null;
-        else {
-            return modelMapper.map(usuario, UsuarioData.class);
-        }
+  @Transactional(readOnly = true)
+  public UsuarioData findById(Long usuarioId) {
+    Usuario usuario = usuarioRepository.findById(usuarioId).orElse(null);
+    if (usuario == null)
+      return null;
+    else {
+      return modelMapper.map(usuario, UsuarioData.class);
     }
+  }
+
+  // Metodo para enviar la lista de usuarios
+  @Transactional(readOnly = true)
+  public List<UsuarioData> getAll() {
+    logger.debug("Devolviendo todas los usuarios");
+    List<Usuario> p = (List<Usuario>) usuarioRepository.findAll();
+    if (p == null) {
+      throw new TareaServiceException("No hay usuarios");
+    }
+    List<UsuarioData> usuarios = p.stream().map(usuario -> modelMapper.map(usuario, UsuarioData.class))
+        .collect(Collectors.toList());
+    return usuarios;
+  }
 }
